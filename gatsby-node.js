@@ -3,11 +3,8 @@ const { basename } = require('path')
 const { parse: parseUrl } = require('url')
 const escapeRegExp = require('lodash.escaperegexp')
 const { GraphQLClient } = require('graphql-request')
-
-/**
- * THe default field name for static files
- */
-const defaultStaticFieldName = ({ fieldName }) => `${fieldName}Static`
+const fs = require('fs-extra')
+const path = require('path')
 
 /*
  * The default field name for transformed fields (original field name ending with `Transformed`)
@@ -32,6 +29,32 @@ const replaceAsync = async (str, regex, asyncFn) => {
   })
   const data = await Promise.all(promises)
   return str.replace(regex, () => data.shift())
+}
+
+// @see https://github.com/gatsbyjs/gatsby/blob/master/packages/gatsby-source-filesystem/src/extend-file-node.js
+const getPublicURL = ({
+  getNodeAndSavePathDependency,
+  file,
+  context,
+  pathPrefix,
+}) => {
+  const details = getNodeAndSavePathDependency(file.id, context.path)
+  const fileName = `${file.internal.contentDigest}/${details.base}`
+
+  const publicPath = path.join(process.cwd(), `public`, `static`, fileName)
+
+  if (!fs.existsSync(publicPath)) {
+    fs.copy(details.absolutePath, publicPath, (err) => {
+      if (err) {
+        console.error(
+          `error copying file from ${details.absolutePath} to ${publicPath}`,
+          err
+        )
+      }
+    })
+  }
+
+  return `${pathPrefix}/static/${fileName}`
 }
 
 /**
@@ -60,6 +83,7 @@ const linkRemoteFiles = async ({
             type: 'File',
             firstOnly: true,
           })
+
           if (!file) {
             reporter.warn(
               `No static for "${source.id}". Maybe adjust your query.`
@@ -87,6 +111,7 @@ const transformField = async ({
   pathPrefix,
   createResolvers,
   reporter,
+  getNodeAndSavePathDependency,
 }) => {
   const resolvers = {
     [typeName]: {
@@ -101,7 +126,7 @@ const transformField = async ({
 
             const { pathname } = parseUrl(url)
             const base = basename(pathname)
-            const staticFile = await context.nodeModel.runQuery({
+            const file = await context.nodeModel.runQuery({
               query: {
                 filter: {
                   base: { eq: base },
@@ -110,16 +135,23 @@ const transformField = async ({
               type: 'File',
               firstOnly: true,
             })
-            if (!staticFile) {
+            if (!file) {
               reporter.warn(`Missing static file for: "${url}"`)
               return url
             }
-            const { internal, name, ext } = staticFile
-            const staticPath = `${pathPrefix}/static/${name}-${internal.contentDigest}${ext}`
+            const publicURL = getPublicURL({
+              getNodeAndSavePathDependency,
+              file,
+              context,
+              pathPrefix,
+            })
+            // const { internal, name, ext } = staticFile
+            // const staticPath = `${pathPrefix}/static/${name}-${internal.contentDigest}${ext}`
             // const { publicURL } = staticFile
             // const staticPath = publicURL
-            reporter.verbose(`Found static replacement "${staticPath}"`)
-            return staticPath
+            // reporter.verbose(`Found static replacement "${staticPath}"`)
+            reporter.verbose(`Found static replacement "${publicURL}"`)
+            return publicURL
           })
         },
       },
@@ -191,7 +223,7 @@ exports.sourceNodes = async (
 }
 
 exports.createResolvers = async (
-  { createResolvers, reporter, pathPrefix },
+  { createResolvers, reporter, pathPrefix, getNodeAndSavePathDependency },
   pluginOptions
 ) => {
   let { files = [], transformFields = [] } = pluginOptions
@@ -234,6 +266,7 @@ exports.createResolvers = async (
         pathPrefix,
         createResolvers,
         reporter,
+        getNodeAndSavePathDependency,
       })
     )
   }
