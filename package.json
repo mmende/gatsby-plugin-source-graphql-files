@@ -1,6 +1,6 @@
 {
   "name": "gatsby-plugin-source-graphql-files",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Sources graphql files statically to use with gatsby-image e.g. and allows transform graphql fields containing links to the remote files to point to the static file nodes.",
   "main": "gatsby-node.js",
   "author": "Martin Mende",
