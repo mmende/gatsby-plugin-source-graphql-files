@@ -14,6 +14,13 @@
     "gatsby",
     "gatsby-plugin"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmende/gatsby-plugin-source-graphql-files"
+  },
+  "bugs": {
+    "url": "https://github.com/mmende/gatsby-plugin-source-graphql-files/issues"
+  },
   "peerDependencies": {
     "gatsby-source-filesystem": "^2.3.1"
   },
