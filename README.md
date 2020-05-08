@@ -73,8 +73,9 @@ In order to resolve the correct file node you must include the id in your querie
 
 ```ts
 interface SourceOptions {
-  endpoint: string
-  query: string
+  endpoint: string // Graphql endpoint
+  query: string // Query to fetch url's and id's
+  // A function to map the query result to an array of url's and id's
   source: (queryResult: Object) => Array<{ url: string; id: string }>
   options?: Object // @see graphql-request
   variables?: Object
@@ -85,7 +86,7 @@ interface SourceOptions {
 
 ```ts
 interface FileOptions {
-  typeName: string
+  typeName: string // Graphql type that will get the static field added
   staticFieldName?: string // @default 'staticFile'
 }
 ```
@@ -94,11 +95,14 @@ interface FileOptions {
 
 ```ts
 interface TransformFieldOptions {
-  baseUrl: string
-  typeName: string
-  fieldName: string
+  baseUrl: string // Url that will be used in the regex to find remote file url's
+  typeName: string // Graphql type to add transformation field
+  fieldName: string // The field that contains the content to transform
   transformFieldName?: string // @default <fieldName>Transformed
-  // @default ({ baseUrl }) => new RegExp(`${_.escapeRegExp(baseUrl)}[^ )]+`, 'g')
+  /*
+   * Functiont that produces a regular expression to match remote url's
+   * @default ({ baseUrl }) => new RegExp(`${_.escapeRegExp(baseUrl)}[^ )]+`, 'g')
+   */
   regex?: (options: TransformFieldOptions) => RegExp
 }
 ```
