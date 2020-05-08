@@ -1,0 +1,22 @@
+{
+  "name": "gatsby-plugin-source-graphql-files",
+  "version": "1.0.0",
+  "description": "Sources graphql files statically to use with gatsby-image e.g. and allows transform graphql fields containing links to the remote files to point to the static file nodes.",
+  "main": "gatsby-node.js",
+  "author": "Martin Mende",
+  "license": "MIT",
+  "dependencies": {
+    "graphql-request": "^1.8.2",
+    "lodash.escaperegexp": "^4.1.2"
+  },
+  "keywords": [
+    "gatsby",
+    "gatsby-plugin"
+  ],
+  "peerDependencies": {
+    "gatsby-source-filesystem": "^2.3.1"
+  },
+  "devDependencies": {
+    "prettier": "^2.0.5"
+  }
+}
