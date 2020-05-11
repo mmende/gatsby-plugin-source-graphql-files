@@ -72,25 +72,38 @@ const linkRemoteFiles = async ({
       [staticFieldName]: {
         type: 'File',
         resolve: async (source, args, context, info) => {
-          const file = await context.nodeModel.runQuery({
+          const staticFile = await context.nodeModel.runQuery({
             query: {
               filter: {
-                internal: {
-                  content: { eq: source.id },
-                },
+                originalId: { eq: source.id },
               },
             },
-            type: 'File',
+            type: 'StaticGraphQLFile',
             firstOnly: true,
           })
-
-          if (!file) {
+          if (!staticFile) {
             reporter.warn(
               `No static for "${source.id}". Maybe adjust your query.`
             )
             return null
           }
-          file.parentId = source.id
+          const fileId = staticFile.children[0]
+          const file = await context.nodeModel.runQuery({
+            query: {
+              filter: {
+                id: { eq: fileId },
+              },
+            },
+            type: 'File',
+            firstOnly: true,
+          })
+          if (!file) {
+            // This should basically never happen
+            reporter.warn(
+              `Could not find associated static file with id "${fileId}".`
+            )
+            return null
+          }
           return file
         },
       },
@@ -145,11 +158,6 @@ const transformField = async ({
               context,
               pathPrefix,
             })
-            // const { internal, name, ext } = staticFile
-            // const staticPath = `${pathPrefix}/static/${name}-${internal.contentDigest}${ext}`
-            // const { publicURL } = staticFile
-            // const staticPath = publicURL
-            // reporter.verbose(`Found static replacement "${staticPath}"`)
             reporter.verbose(`Found static replacement "${publicURL}"`)
             return publicURL
           })
@@ -158,6 +166,39 @@ const transformField = async ({
     },
   }
   createResolvers(resolvers)
+}
+
+const createFileNode = async ({
+  id,
+  url,
+  store,
+  cache,
+  createNode,
+  createNodeId,
+  reporter,
+}) => {
+  const fileNode = await createRemoteFileNode({
+    url,
+    store,
+    cache,
+    createNode,
+    createNodeId,
+    reporter,
+  })
+  // To be able to identify the file later on
+  // we add a parent node with the originalId containing
+  // the actual graphql id
+  createNode({
+    originalId: id,
+
+    id: createNodeId(`graphql-files${id}`),
+    parent: null,
+    children: [fileNode.id],
+    internal: {
+      type: 'StaticGraphQLFile',
+      contentDigest: id,
+    },
+  })
 }
 
 const sourceFiles = async ({
@@ -180,15 +221,14 @@ const sourceFiles = async ({
   for (let file of files) {
     const { url, id } = file
     addFilePromises.push(
-      createRemoteFileNode({
+      createFileNode({
+        id,
         url,
         store,
         cache,
         createNode,
         createNodeId,
         reporter,
-      }).then((node) => {
-        node.internal.content = id
       })
     )
   }
