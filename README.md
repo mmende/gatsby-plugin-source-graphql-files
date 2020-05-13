@@ -18,41 +18,55 @@ npm install --save gatsby-plugin-source-graphql-files
 
 ## How to use
 
+### Configuration example
+
 ```js
 // In your gatsby-config.js
 module.exports = {
   plugins: [
-    resolve: `gatsby-plugin-source-graphql-files`,
-    options: {
-      sources: {
-        endpoint: 'https://example.com/graphql',
-        query: `
-          {
-            files {
-              id
-              url
-            }
-          }
-        `,
-        source: ({ files }) => files,
+    `gatsby-source-filesystem`,
+    {
+      resolve: 'gatsby-source-graphql',
+      options: {
+        typeName: 'CMS',
+        fieldName: 'cms',
+        url: `https://example.com/graphql`,
       },
-      files: {
-        typeName: 'CMS_UploadFile',
-      },
-      transformFields: [
-        {
-          baseUrl: 'https://example.com',
-          typeName: 'CMS_ComponentContentParagraph',
-          fieldName: 'Content',
-        },
-      ],
     },
+    {
+      resolve: `gatsby-plugin-source-graphql-files`,
+      options: {
+        sources: {
+          endpoint: 'https://example.com/graphql',
+          query: `
+            {
+              files {
+                id
+                url
+              }
+            }
+          `,
+          source: ({ files }) => files,
+        },
+        files: {
+          typeName: 'CMS_UploadFile',
+        },
+        transformFields: [
+          {
+            baseUrl: 'https://example.com',
+            typeName: 'CMS_ComponentContentParagraph',
+            fieldName: 'Content',
+          },
+        ],
+      },
+    }
   ]
 }
 ```
 
-**Note:**
-In order to resolve the correct file node you must include the id in your queries like so:
+### Querying
+
+In order to know which static file belongs to which GraphQL node the plugin requires the `id` to be also queried for each file like so:
 
 ```graphql
 {
@@ -66,6 +80,21 @@ In order to resolve the correct file node you must include the id in your querie
   }
 }
 ```
+
+The same problem has to be fixed for transformed fields by including the original field in your query like so:
+
+```graphql
+{
+  cms {
+    page(id: "42") {
+      Content # <- Base field as specified in `transformFields`. Required to know the content to transform
+      content: ContentTransformed
+    }
+  }
+}
+```
+
+Also don't use aliases for `id` or the original field name.
 
 ## Options
 
