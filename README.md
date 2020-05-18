@@ -59,8 +59,8 @@ module.exports = {
           },
         ],
       },
-    }
-  ]
+    },
+  ],
 }
 ```
 
@@ -108,6 +108,11 @@ interface SourceOptions {
   source: (queryResult: Object) => Array<{ url: string; id: string }>
   options?: Object // @see graphql-request
   variables?: Object
+  /**
+   * Max concurrent downloads for this source
+   * @default 200
+   */
+  chunkSize?: number
 }
 ```
 

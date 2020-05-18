@@ -5,6 +5,7 @@ const escapeRegExp = require('lodash.escaperegexp')
 const { GraphQLClient } = require('graphql-request')
 const fs = require('fs-extra')
 const path = require('path')
+const chunk = require('lodash.chunk')
 
 /*
  * The default field name for transformed fields (original field name ending with `Transformed`)
@@ -171,16 +172,14 @@ const transformField = async ({
 const createFileNode = async ({
   id,
   url,
-  store,
-  cache,
+  getCache,
   createNode,
   createNodeId,
   reporter,
 }) => {
   const fileNode = await createRemoteFileNode({
     url,
-    store,
-    cache,
+    getCache,
     createNode,
     createNodeId,
     reporter,
@@ -207,9 +206,9 @@ const sourceFiles = async ({
   variables,
   options,
   source,
+  chunkSize = 200,
 
-  store,
-  cache,
+  getCache,
   createNode,
   createNodeId,
   reporter,
@@ -217,26 +216,31 @@ const sourceFiles = async ({
   const client = new GraphQLClient(endpoint, options)
   const data = await client.request(query, variables)
   const files = source(data)
-  const addFilePromises = []
-  for (let file of files) {
-    const { url, id } = file
-    addFilePromises.push(
-      createFileNode({
-        id,
-        url,
-        store,
-        cache,
-        createNode,
-        createNodeId,
-        reporter,
-      })
-    )
+
+  // Split the array of files to download
+  // into chunks of the specified chunkSize
+  const filesChunks = chunk(files, chunkSize)
+  for (let filesChunk of filesChunks) {
+    const addFilePromises = []
+    for (let file of filesChunk) {
+      const { url, id } = file
+      addFilePromises.push(
+        createFileNode({
+          id,
+          url,
+          getCache,
+          createNode,
+          createNodeId,
+          reporter,
+        })
+      )
+    }
+    await Promise.all(addFilePromises)
   }
-  await Promise.all(addFilePromises)
 }
 
 exports.sourceNodes = async (
-  { store, cache, createNodeId, reporter, actions },
+  { getCache, createNodeId, reporter, actions },
   pluginOptions
 ) => {
   const { createNode } = actions
@@ -245,21 +249,20 @@ exports.sourceNodes = async (
     sources = [sources]
   }
 
-  // Query all files
-  const sourceFilesPromises = []
-  for (let sourceOptions of sources) {
-    sourceFilesPromises.push(
+  const sourcePromises = []
+  for (let source of sources) {
+    sourcePromises.push(
       sourceFiles({
-        ...sourceOptions,
+        ...source,
+        getCache,
         createNode,
-        store,
-        cache,
         createNodeId,
         reporter,
       })
     )
   }
-  await Promise.all(sourceFilesPromises)
+
+  await Promise.all(sourcePromises)
 }
 
 exports.createResolvers = async (
