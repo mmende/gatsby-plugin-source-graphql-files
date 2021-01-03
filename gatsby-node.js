@@ -23,6 +23,9 @@ const defaultRegex = ({ baseUrl }) =>
  * String replacement with async callback
  */
 const replaceAsync = async (str, regex, asyncFn) => {
+  if(typeof str != "string"){
+    return '';
+  }
   const promises = []
   str.replace(regex, (match, ...args) => {
     const promise = asyncFn(match, ...args)
